@@ -1,19 +1,22 @@
-package crossbot
+package connector
 
 import "net/url"
 
 type BotAPI interface {
 	SendMessage(User, string, Options) error
-	SendPhoto(User, Photo, Options) error
-	SendVideo(User, Photo, Options) error
+	SendPhoto(User, PhotoSize, Options) error
+	SendAudio(User, Audio, Options) error
+	SendDocument(User, Document, Options) error
+	SendVideo(User, Video, Options) error
 	GetFileURL(string) string
 
-	GetUpdates(UpdateConfig) ([]Message, error)
-	SetWebhook(WebhookConfig) (bool, error)
+	GetUpdates(chan<- Message, chan<- struct{}, chan<- error)
+	SetAndListen(string, string, chan<- Message, chan<- struct{}, chan<- error)
 }
 
 type Options struct {
 	ParseMode             string
+	Caption               string
 	DisableWebPagePreview bool
 	Keyboard              [][]string
 	ResizeKeyboard        bool
@@ -43,29 +46,5 @@ func NewUpdate(offset int64) UpdateConfig {
 		Offset:  offset,
 		Limit:   0,
 		Timeout: 0,
-	}
-}
-
-// NewWebhook creates a new webhook.
-//
-// link is the url parsable link you wish to get the updates.
-func NewWebhook(link string) WebhookConfig {
-	u, _ := url.Parse(link)
-
-	return WebhookConfig{
-		URL: u,
-	}
-}
-
-// NewWebhookWithCert creates a new webhook with a certificate.
-//
-// link is the url you wish to get webhooks,
-// file contains a string to a file, FileReader, or FileBytes.
-func NewWebhookWithCert(link string, file interface{}) WebhookConfig {
-	u, _ := url.Parse(link)
-
-	return WebhookConfig{
-		URL:         u,
-		Certificate: file,
 	}
 }

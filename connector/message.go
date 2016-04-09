@@ -1,6 +1,4 @@
-package crossbot
-
-import "strings"
+package connector
 
 // General Message received from connector
 type Message struct {
@@ -23,6 +21,7 @@ type User struct {
 // This stores the contents received from bot
 type Chat struct {
 	Type     string
+	Command  string
 	Text     string
 	Photo    []PhotoSize
 	Audio    Audio
@@ -45,13 +44,7 @@ func (c Chat) Command() string {
 		return ""
 	}
 
-	command := strings.SplitN(c.Text, " ", 2)[0][1:]
-
-	if i := strings.Index(command, "@"); i != -1 {
-		command = command[:i]
-	}
-
-	return command
+	return c.Command
 }
 
 // PhotoSize contains information about photos.

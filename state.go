@@ -1,9 +1,9 @@
-package builder
+package crossbot
 
 import (
 	"errors"
 
-	"github.com/abhinavdahiya/crossbot/crossbot"
+	"github.com/abhinavdahiya/crossbot/connector"
 )
 
 const (
@@ -12,7 +12,7 @@ const (
 
 // This struct defines any state for the bot
 // corresponding to any user
-// This also stores Transistors for all possible
+// This also stores transitors for all possible
 // moves from this state
 //
 // make sure the state Name is unique
@@ -21,9 +21,9 @@ type State struct {
 	Enter, Leave Action
 	IsMoved      bool
 	Chain        string
-	CmdRules     map[string]Transistor
-	TypeRules    map[string]Transistor
-	FallbackRule Transistor
+	CmdRules     map[string]string
+	TypeRules    map[string]string
+	FallbackRule string
 }
 
 // This gets the context data for a state
@@ -44,24 +44,24 @@ func (s *State) Transit(ns string) {
 	s.Chain = ns
 }
 
-// Registers a command transistor for this state
-func (s *State) RegisterCmdRule(cmd string, t Transistor) {
-	s.CmdRules[cmd] = t
+// Registers a command transitor for this state
+func (s *State) RegisterCmdRule(cmd string, next string) {
+	s.CmdRules[cmd] = next
 }
 
-// Registers a transistor corresponding to the type of the message
+// Registers a transitor corresponding to the type of the message
 // supported types are
 // - text
 // - photo
 // - audio
 // - video
-func (s *State) RegisterTypeRule(tp string, t Transistor) {
-	s.TypeRules[tp] = t
+func (s *State) RegisterTypeRule(tp string, next string) {
+	s.TypeRules[tp] = next
 }
 
-// Registers a fallback transistor
-func (s *State) RegisterFallback(t Transistor) {
-	s.FallbackRule = t
+// Registers a fallback transitor
+func (s *State) RegisterFallback(next string) {
+	s.FallbackRule = next
 }
 
 // This function tests the rules defined for the state and
@@ -70,47 +70,33 @@ func (s *State) RegisterFallback(t Transistor) {
 // The priority order is as follows:
 // 1. check cmd rules
 // 2. check type rules
-// 3. fallback transistor
+// 3. fallback transitor
 // On each step if match is found stop and return the state
-func (s *State) Test(msg crossbot.Message) (string, error) {
+func (s *State) Test(msg connector.Message) (string, error) {
 	if msg.Chat.IsCommand() {
 		cmd := msg.Chat.Command()
 		if nxt, ok := s.CmdRules[cmd]; ok {
-			next, err := nxt(msg)
-			if err != nil {
-				return "", err
-			}
-			return next, nil
+			return nxt, nil
 		}
 	} else {
 		tp := msg.Chat.Type
 		if nxt, ok := s.TypeRules[tp]; ok {
-			next, err := nxt(msg)
-			if err != nil {
-				return "", err
-			}
-			return next, nil
+			return nxt, nil
 		}
 	}
 
-	if s.FallbackRule == nil {
+	if s.FallbackRule == "" {
 		return "", ErrNoRuleFound
-	} else {
-		next, err := s.FallbackRule(msg)
-		if err != nil {
-			return "", err
-		}
-		return next, nil
 	}
-}
 
-// This function provides the next state coreesponding to the message
-// received by the current state
-type Transistor func(msg crossbot.Message) (string, error)
+	nxt := s.FallbackRule
+	return nxt, nil
+
+}
 
 // This is the function that performs action
 // on entering or leaving a particular state
-type Action func(msg crossbot.Message) error
+type Action func(msg connector.Message) error
 
 // Create a new empty state
 func MakeState(name string) *State {
@@ -120,8 +106,8 @@ func MakeState(name string) *State {
 		Leave:        nil,
 		IsMoved:      False,
 		Chain:        "",
-		CmdRules:     make(map[string]Transistor),
-		TypeRules:    make(map[string]Transistor),
-		FallbackRule: nil,
+		CmdRules:     make(map[string]string),
+		TypeRules:    make(map[string]string),
+		FallbackRule: "",
 	}
 }
